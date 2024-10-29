@@ -2,7 +2,6 @@ package com.wavemaker.leavemanagement.repository.impl.inmemory;
 
 import com.wavemaker.leavemanagement.constants.LeaveRequestStatus;
 import com.wavemaker.leavemanagement.exception.ServerUnavailableException;
-import com.wavemaker.leavemanagement.model.Employee;
 import com.wavemaker.leavemanagement.model.EmployeeLeave;
 import com.wavemaker.leavemanagement.model.LeaveRequest;
 import com.wavemaker.leavemanagement.repository.EmployeeLeaveRepository;
@@ -11,22 +10,23 @@ import com.wavemaker.leavemanagement.util.DateUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Repository;
 
 import java.sql.Date;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+@Repository("EmployeeLeaveRepositoryInMemory")
 public class EmployeeLeaveRepositoryInMemoryImpl implements EmployeeLeaveRepository {
-    private static ConcurrentHashMap<Integer, EmployeeLeave> employeeLeaveMap = new ConcurrentHashMap<>();
     private static final Logger logger = LoggerFactory.getLogger(EmployeeLeaveRepositoryInMemoryImpl.class);
+    private static ConcurrentHashMap<Integer, EmployeeLeave> employeeLeaveMap = new ConcurrentHashMap<>();
     @Autowired
     private LeaveTypeRepository leaveTypeRepository;
 
     @Override
-    public LeaveRequest applyLeave(EmployeeLeave leaveRequest) throws ServerUnavailableException {
+    public LeaveRequest applyLeave(LeaveRequest leaveRequest) throws ServerUnavailableException {
         int leaveId = -1;
         leaveId = getMaxLeaveId();
         leaveId += 1;
@@ -39,7 +39,7 @@ public class EmployeeLeaveRepositoryInMemoryImpl implements EmployeeLeaveReposit
             logger.error("Leave Request with  Leave ID {} already exists.", leaveRequest.getLeaveId());
 
         }
-        employeeLeaveMap.put(leaveRequest.getLeaveId(), leaveRequest);
+        employeeLeaveMap.put(leaveRequest.getLeaveId(),(EmployeeLeave) leaveRequest);
         logger.info("leave request  with ID {} added successfully.", leaveRequest.getLeaveId());
         return leaveRequest;
     }
@@ -49,7 +49,7 @@ public class EmployeeLeaveRepositoryInMemoryImpl implements EmployeeLeaveReposit
 //        return new ArrayList<>(employeeLeaveMap.values());
         return employeeLeaveMap.values()
                 .stream()
-                .filter(leave -> leave.getEmployeeId() == empId &&leave.getStatus().equals(String.valueOf(status)))
+                .filter(leave -> leave.getEmployeeId() == empId && leave.getStatus().equals(String.valueOf(status)))
                 .collect(Collectors.toList());
     }
 
@@ -75,14 +75,10 @@ public class EmployeeLeaveRepositoryInMemoryImpl implements EmployeeLeaveReposit
     public List<EmployeeLeave> getLeavesOfEmployees(List<Integer> employeeIds, LeaveRequestStatus status) throws ServerUnavailableException {
         return employeeLeaveMap.values()
                 .stream()
-                .filter(leave -> employeeIds.contains(leave.getEmployeeId())&&leave.getStatus().equals(String.valueOf(status)))
+                .filter(leave -> employeeIds.contains(leave.getEmployeeId()) && leave.getStatus().equals(String.valueOf(status)))
                 .collect(Collectors.toList());
     }
 
-    @Override
-    public int getNumberOfLeavesAllocated(String leaveType) {
-        return leaveTypeRepository.getNumberOfLeavesAllocated(leaveType);
-    }
 
     @Override
     public int getTotalNumberOfLeavesTaken(int empId, int leaveTypeId) throws SQLException {
@@ -101,15 +97,6 @@ public class EmployeeLeaveRepositoryInMemoryImpl implements EmployeeLeaveReposit
 
     }
 
-    @Override
-    public int getLeaveTypeId(String leaveType) throws ServerUnavailableException {
-        return 0;
-    }
-
-    @Override
-    public String getLeaveType(int leaveTypeId) throws ServerUnavailableException {
-        return leaveTypeRepository.getLeaveType(leaveTypeId);
-    }
 
     private int getMaxLeaveId() {
         int maxLeaveId = 0;

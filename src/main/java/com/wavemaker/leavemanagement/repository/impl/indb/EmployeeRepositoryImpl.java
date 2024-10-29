@@ -1,15 +1,19 @@
 package com.wavemaker.leavemanagement.repository.impl.indb;
 
 import com.wavemaker.leavemanagement.exception.ServerUnavailableException;
-import com.wavemaker.leavemanagement.model.Employee;
-import com.wavemaker.leavemanagement.model.EmployeeLeave;
-import com.wavemaker.leavemanagement.model.EmployeeLeaveSummary;
-import com.wavemaker.leavemanagement.model.EmployeeManager;
+import com.wavemaker.leavemanagement.model.*;
 import com.wavemaker.leavemanagement.repository.EmployeeRepository;
 import com.wavemaker.leavemanagement.util.DbConnection;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.transaction.Transactional;
+import org.hibernate.Session;
+import org.hibernate.query.Query;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.hibernate5.HibernateTemplate;
+import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -17,7 +21,11 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
+@Repository
 public class EmployeeRepositoryImpl implements EmployeeRepository {
+    @Autowired
+    private HibernateTemplate hibernateTemplate;
+    private static Logger logger = LoggerFactory.getLogger(EmployeeRepositoryImpl.class);
     private static final String FIND_EMPLOYEES_BY_MANAGER_QUERY =
             "SELECT * FROM EMPLOYEE WHERE MANAGER_ID = ?";
 
@@ -69,108 +77,60 @@ public class EmployeeRepositoryImpl implements EmployeeRepository {
 
 
     @Override
+    @Transactional
     public Employee addEmployee(Employee employee) {
-
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(INSERT_EMPLOYEE_QUERY)) {
-
-            preparedStatement.setInt(1, employee.getEmployeeId());
-            preparedStatement.setString(2, employee.getEmpName());
-            preparedStatement.setString(3, employee.getEmail());
-            preparedStatement.setDate(4, java.sql.Date.valueOf(employee.getDateOfBirth()));  // Convert LocalDate to java.sql.Date
-            preparedStatement.setBigDecimal(5, new BigDecimal(employee.getPhoneNumber()));
-            preparedStatement.setInt(6, employee.getManagerId());
-
-            int rowsAffected = preparedStatement.executeUpdate();
-            if (rowsAffected > 0) {
-                System.out.println("Employee added successfully!");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            // Handle exceptions (e.g., logging)
-        }
-
-        return employee;
-
+        return (Employee) hibernateTemplate.save(employee);
     }
 
     @Override
-    public boolean checkManager(String emailId) throws ServerUnavailableException {
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(CHECK_MANAGER_QUERY)) {
-
-            preparedStatement.setString(1, emailId);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    int count = resultSet.getInt(1);
-                    // If the count is greater than 0, the employee is a manager
-                    return count > 0;
-                }
-            }
-        } catch (SQLException e) {
-            throw new ServerUnavailableException("unavailable to accept leave request", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        }
-        // Handle exceptions (e.g., logging)
-
-        return false;
-    }
-
-    @Override
+    @Transactional
     public Employee getEmployeeByLoginId(int loginId) throws ServerUnavailableException {
         Employee employee = null;
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement getEmployeeIdStatement = connection.prepareStatement(GET_EMPLOYEE_BY_LOGIN_ID_QUERY)) {
-            getEmployeeIdStatement.setInt(1, loginId);
-            try (ResultSet employeeIdResultSet = getEmployeeIdStatement.executeQuery()) {
-                if (employeeIdResultSet.next()) {
-                    int employeeId = employeeIdResultSet.getInt("EMPLOYEE_ID");
-                    try (PreparedStatement getEmployeeStatement = connection.prepareStatement(GET_EMPLOYEE_DETAILS_QUERY)) {
-                        getEmployeeStatement.setInt(1, employeeId);
-                        try (ResultSet employeeResultSet = getEmployeeStatement.executeQuery()) {
-                            if (employeeResultSet.next()) {
-                                employee = new Employee();
-                                employee.setEmployeeId(employeeResultSet.getInt("EMPLOYEE_ID"));
-                                employee.setEmpName(employeeResultSet.getString("NAME"));
-                                employee.setEmail(employeeResultSet.getString("EMAIL"));
-                                employee.setDateOfBirth(employeeResultSet.getDate("DATE_OF_BIRTH").toLocalDate());
-                                employee.setPhoneNumber(employeeResultSet.getLong("PHONE_NUMBER"));
-                                employee.setManagerId(employeeResultSet.getInt("MANAGER_ID"));
-                                employee.setGender(employeeResultSet.getString("GENDER"));
-                                return  employee;
-                                // Set other fields as necessary
-                            }
-                        }
-                    }
-                }
+        Session session = hibernateTemplate.getSessionFactory().getCurrentSession();
 
+        String hql = "from LoginCredential lc where lc.loginId=:loginId";
+        try {
+            Query<LoginCredential> query = session.createQuery(hql, LoginCredential.class);
+            query.setParameter("loginId", loginId);
+
+            LoginCredential result = query.uniqueResult();
+
+            if (result != null) {
+                int employeeId = result.getEmployeeId();
+                employee = hibernateTemplate.get(Employee.class, employeeId);
+                return employee;
             }
 
-        } catch (SQLException e) {
-            throw new ServerUnavailableException("unavailable to accept leave request", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        } catch (Exception e) {
+            logger.error("Error validating user", e);
         }
-        return employee;
 
+     return  employee;
 
     }
 
     @Override
+    @Transactional
     public List<Integer> getEmpIdUnderManager(int managerId) throws ServerUnavailableException {
-        List<Integer> employeeIds = new ArrayList<>();
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(GET_EMPLOYEE_IDS_UNDER_MANAGER_QUERY)) {
-            preparedStatement.setInt(1, managerId);
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    employeeIds.add(resultSet.getInt("EMPLOYEE_ID"));
-                }
-            }
-        } catch (SQLException e) {
-            throw new ServerUnavailableException("unavailable to accept leave request", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        }
-        return employeeIds;
-    }
+        List<Integer> employeeIdsList = new ArrayList<>();
+        Session session = hibernateTemplate.getSessionFactory().getCurrentSession();
 
+        String hql = "SELECT e.employeeId FROM Employee e WHERE e.managerId = :managerId";
+        try {
+            Query<Integer> query = session.createQuery(hql, Integer.class);
+            query.setParameter("managerId", managerId);
+
+            employeeIdsList = query.list(); // Directly get the list of employee IDs
+
+            return employeeIdsList;
+
+        } catch (Exception e) {
+            logger.error("Error validating user", e);
+        }
+
+        return employeeIdsList;
+
+    }
     @Override
     public EmployeeManager getEmployeeManagerDetails(int employeeId) throws ServerUnavailableException {
         EmployeeManager employeeManager = null;
@@ -223,21 +183,15 @@ public class EmployeeRepositoryImpl implements EmployeeRepository {
                     int totalLeavesTaken = resultSet.getInt("totalLeavesTaken");
                     int leaveTypeLimit = resultSet.getInt("leaveTypeLimit");
                     int pendingLeaves = leaveTypeLimit - totalLeavesTaken;
-
-                    // Setting employee details (only set once)
                     if (employeeLeave.getEmpName() == null) {
                         employeeLeave.setEmpName(resultSet.getString("employeeName"));
                         employeeLeave.setPhoneNumber(resultSet.getLong("phoneNumber")); // Make sure PHONE_NUMBER is of type Long in your DB
                         employeeLeave.setEmail(resultSet.getString("emailId"));
                     }
-
-                    // Create and set EmployeeLeaveSummary
                     EmployeeLeaveSummary employeeLeaveSummary = new EmployeeLeaveSummary();
                     employeeLeaveSummary.setLeaveType(resultSet.getString("leaveType"));
                     employeeLeaveSummary.setTotalLeavesTaken(totalLeavesTaken);
-                    employeeLeaveSummary.setTotalAllocatedLeaves(leaveTypeLimit);
                     employeeLeaveSummary.setPendingLeaves(pendingLeaves);
-
                     employeeLeaveSummaries.add(employeeLeaveSummary);
                 }
 
@@ -245,7 +199,6 @@ public class EmployeeRepositoryImpl implements EmployeeRepository {
             }
 
         } catch (SQLException e) {
-            // Adjust exception handling as needed
             throw new ServerUnavailableException("Unable to fetch employee leave details", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
         }
 

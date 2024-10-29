@@ -1,35 +1,61 @@
 package com.wavemaker.leavemanagement.model;
 
 
-import java.time.LocalDate;
+import jakarta.persistence.*;
 
+import java.time.LocalDate;
+import java.util.Objects;
+
+@Entity
+@Table(name="COOKIE")
 public class EmployeeCookie {
 
-    private int cookieId;
+    @Id
+    @Column(name = "COOKIE_ID")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer cookieId;
+    @Column(name = "COOKIE_NAME")
     private String cookieName;
+    @Column(name = "COOKIE_VALUE")
     private String cookieValue;
-    private int loginId;
+    @Column(name = "LOGIN_ID")
+    private Integer loginId;
+    @Column(name = "EXPIRY_DATE")
     private LocalDate expiryLocalDate;
+    @ManyToOne
+    @JoinColumn(name = "LOGIN_ID", referencedColumnName = "LOGIN_ID", insertable = false, updatable = false)
+    private LoginCredential loginCredential;
+
+    public LoginCredential getLoginCredential() {
+        return loginCredential;
+    }
+
+    public void setLoginCredential(LoginCredential loginCredential) {
+        if(loginCredential != null) {
+            this.loginId = loginCredential.getLoginId();
+        }
+
+        this.loginCredential = loginCredential;
+    }
 
     // Default constructor
     public EmployeeCookie() {
     }
 
-    // Parameterized constructor
-    public EmployeeCookie(int cookieId, String cookieName, String cookieValue, int loginId, LocalDate expiryLocalDate) {
-        this.cookieId = cookieId;
-        this.cookieName = cookieName;
-        this.cookieValue = cookieValue;
+
+    public void setLoginId(Integer loginId) {
         this.loginId = loginId;
-        this.expiryLocalDate = expiryLocalDate;
     }
 
-    // Getters and Setters
-    public int getCookieId() {
+    public Integer getLoginId() {
+        return loginId;
+    }
+
+    public Integer getCookieId() {
         return cookieId;
     }
 
-    public void setCookieId(int cookieId) {
+    public void setCookieId(Integer cookieId) {
         this.cookieId = cookieId;
     }
 
@@ -49,13 +75,6 @@ public class EmployeeCookie {
         this.cookieValue = cookieValue;
     }
 
-    public int getLoginId() {
-        return loginId;
-    }
-
-    public void setLoginId(int loginId) {
-        this.loginId = loginId;
-    }
 
     public LocalDate getExpiryLocalDate() {
         return expiryLocalDate;
@@ -66,6 +85,19 @@ public class EmployeeCookie {
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        EmployeeCookie that = (EmployeeCookie) o;
+        return Objects.equals(cookieId, that.cookieId) && Objects.equals(cookieName, that.cookieName) && Objects.equals(cookieValue, that.cookieValue) && Objects.equals(loginId, that.loginId) && Objects.equals(expiryLocalDate, that.expiryLocalDate) && Objects.equals(loginCredential, that.loginCredential);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(cookieId, cookieName, cookieValue, loginId, expiryLocalDate, loginCredential);
+    }
+
+    @Override
     public String toString() {
         return "EmployeeCookie{" +
                 "cookieId=" + cookieId +
@@ -73,6 +105,7 @@ public class EmployeeCookie {
                 ", cookieValue='" + cookieValue + '\'' +
                 ", loginId=" + loginId +
                 ", expiryLocalDate=" + expiryLocalDate +
+                ", loginCredential=" + loginCredential +
                 '}';
     }
 }

@@ -2,54 +2,76 @@ package com.wavemaker.leavemanagement.repository.impl.indb;
 
 import com.wavemaker.leavemanagement.model.LoginCredential;
 import com.wavemaker.leavemanagement.repository.LoginCredentialRepository;
-import com.wavemaker.leavemanagement.util.DbConnection;
+import jakarta.transaction.Transactional;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.query.Query;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.hibernate5.HibernateTemplate;
+import org.springframework.stereotype.Repository;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.io.Serializable;
 
+@Repository
 public class LoginCredentialRepositoryImpl implements LoginCredentialRepository {
     private static final Logger logger = LoggerFactory.getLogger(LoginCredentialRepositoryImpl.class);
 
+    @Autowired
+    private HibernateTemplate hibernateTemplate;
+
+    @Autowired
+    private SessionFactory sessionFactory;
+
     @Override
+    @Transactional
     public int isValidate(LoginCredential loginCredential) {
-        String query = "SELECT * FROM LOGIN_CREDENTIAL WHERE EMAILID=? AND PASSWORD=?";
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
+        Session session = hibernateTemplate.getSessionFactory().getCurrentSession();
 
-            preparedStatement.setString(1, loginCredential.getEmailId());
-            preparedStatement.setString(2, loginCredential.getPassword());
+        String hql = "FROM LoginCredential lc WHERE lc.emailId = :email AND lc.password = :password";
+        try {
+            Query<LoginCredential> query = session.createQuery(hql, LoginCredential.class);
+            query.setParameter("email", loginCredential.getEmailId());
+            query.setParameter("password", loginCredential.getPassword());
 
-            ResultSet resultSet = preparedStatement.executeQuery();
+            LoginCredential result =  query.uniqueResult();
 
-            if (resultSet.next()) {
-                return resultSet.getInt("LOGIN_ID");
+            if (result != null) {
+                int i=result.getLoginId();
+                return i;
+
             }
 
-        } catch (SQLException e) {
-            logger.debug("Error validating user", e);
+        } catch (Exception e) {
+            logger.error("Error validating user", e);
         }
 
         return -1;
     }
 
     @Override
+    @Transactional
     public LoginCredential addEmployeeLogin(LoginCredential loginCredential) {
-        String query = "INSERT INTO LOGIN_CREDENTIAL(EMAILID,PASSWORD) VALUES(?, ?)";
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
-            preparedStatement.setString(1, loginCredential.getEmailId());
-            preparedStatement.setString(2, loginCredential.getPassword());
-            preparedStatement.executeUpdate();
-            return loginCredential;  // Return the added user object
+        Serializable serializable = hibernateTemplate.save(loginCredential);
+        return (LoginCredential) serializable;
+    }
 
-        } catch (SQLException e) {
-            logger.debug("Error adding user", e);
-
+    @Override
+    @Transactional
+    public LoginCredential findByEmailId(String emailId) {
+        String hql = "FROM LoginCredential lc WHERE lc.emailId = :emailId";
+        Session session = hibernateTemplate.getSessionFactory().getCurrentSession();
+        try {
+            Query<LoginCredential> query = session.createQuery(hql, LoginCredential.class);
+            query.setParameter("emailId", emailId);
+            LoginCredential result = query.uniqueResult();
+            if (result != null) {
+                return result;
+            }
+        } catch (Exception e) {
+            logger.error("Error validating user", e);
         }
-        return null;  // Return null if user addition fails
+        return null;
     }
 }

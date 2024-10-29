@@ -1,65 +1,106 @@
 package com.wavemaker.leavemanagement.model;
 
 
-import java.time.LocalDate;
+import jakarta.persistence.*;
 
+import java.time.LocalDate;
+import java.util.Objects;
+
+@Entity
+@Table(name = "LEAVE_REQUEST")
 public class LeaveRequest {
-    private int leaveId;
-    private int employeeId;
-    private int leaveTypeId;
+    @Id
+    @Column(name = "LEAVE_ID")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer leaveId;
+    @Column(name = "EMPLOYEE_ID")
+    private Integer employeeId;
+    @Column(name = "LEAVE_TYPE_ID ")
+    private Integer leaveTypeId;
+    @Column(name = "FROM_DATE")
     private LocalDate fromDate;
+    @Column(name = "TO_DATE")
     private LocalDate toDate;
+    @Column(name = "REASON")
     private String reason;
+    @Column(name = "STATUS")
     private String status;
-    private int managerId;
+
+    @Column(name = "MANAGER_ID")
+    private Integer managerId;
+
+    @Column(name = "COMMENTS")
     private String comments;
-    private LocalDate currentDate;
+    @Column(name = "DATE_OF_APPLICATION")
+    private LocalDate dateOfApplication;
+
+    @ManyToOne
+    @JoinColumn(name = "EMPLOYEE_ID", referencedColumnName = "EMPLOYEE_ID", insertable = false, updatable = false)
+    private Employee employeesByEmployeeId;
+
+    @ManyToOne
+    @JoinColumn(name = "MANAGER_ID", referencedColumnName = "EMPLOYEE_ID", insertable = false, updatable = false)
+    private Employee employeesByManagerId;
+
+    @ManyToOne
+    @JoinColumn(name = "LEAVE_TYPE_ID", referencedColumnName = "LEAVE_TYPE_ID", insertable = false, updatable = false)
+    private LeaveType leaveTypes;
+
 
     // Default constructor
     public LeaveRequest() {
     }
 
-    public LeaveRequest(int leaveId, int employeeId, int leaveTypeId, LocalDate fromDate, LocalDate toDate, String reason, String status, int managerId, String comments) {
+    public LeaveRequest(LocalDate fromDate, LocalDate toDate) {
+        this.fromDate = fromDate;
+        this.toDate = toDate;
+    }
+
+    public LeaveRequest(LocalDate fromDate, LocalDate toDate, LeaveType leaveTypes, String reason) {
+        this.fromDate = fromDate;
+        this.toDate = toDate;
+        this.leaveTypes = leaveTypes;
+        this.reason = reason;
+
+    }
+
+    public LeaveRequest(Integer leaveId, Integer employeeId, Integer leaveTypeId, LocalDate fromDate, LocalDate toDate, String reason, String status, Integer managerId, LocalDate currentDate, Employee employeesByEmployeeId, Employee employeesByManagerId, LeaveType leaveTypes, String comments) {
         this.leaveId = leaveId;
         this.employeeId = employeeId;
         this.leaveTypeId = leaveTypeId;
         this.fromDate = fromDate;
         this.toDate = toDate;
         this.reason = reason;
-        this.status = "PENDING";
+        this.status = status;
         this.managerId = managerId;
+        this.dateOfApplication = currentDate;
+        this.employeesByEmployeeId = employeesByEmployeeId;
+        this.employeesByManagerId = employeesByManagerId;
+        this.leaveTypes = leaveTypes;
         this.comments = comments;
     }
 
-    public int getLeaveId() {
+    public Integer getLeaveId() {
         return leaveId;
     }
 
-    public void setLeaveId(int leaveId) {
+    public void setLeaveId(Integer leaveId) {
         this.leaveId = leaveId;
     }
 
-    public LocalDate getCurrentDate() {
-        return currentDate;
-    }
-
-    public void setCurrentDate(LocalDate currentDate) {
-        this.currentDate = currentDate;
-    }
-
-    public int getEmployeeId() {
+    public Integer getEmployeeId() {
         return employeeId;
     }
 
-    public void setEmployeeId(int employeeId) {
+    public void setEmployeeId(Integer employeeId) {
         this.employeeId = employeeId;
     }
 
-    public int getLeaveTypeId() {
+    public Integer getLeaveTypeId() {
         return leaveTypeId;
     }
 
-    public void setLeaveTypeId(int leaveTypeId) {
+    public void setLeaveTypeId(Integer leaveTypeId) {
         this.leaveTypeId = leaveTypeId;
     }
 
@@ -95,11 +136,11 @@ public class LeaveRequest {
         this.status = status;
     }
 
-    public int getManagerId() {
+    public Integer getManagerId() {
         return managerId;
     }
 
-    public void setManagerId(int managerId) {
+    public void setManagerId(Integer managerId) {
         this.managerId = managerId;
     }
 
@@ -111,5 +152,67 @@ public class LeaveRequest {
         this.comments = comments;
     }
 
+    public LocalDate getDateOfApplication() {
+        return dateOfApplication;
+    }
 
+    public void setDateOfApplication(LocalDate dateOfApplication) {
+        this.dateOfApplication = dateOfApplication;
+    }
+
+    public Employee getEmployeesByEmployeeId() {
+        return employeesByEmployeeId;
+    }
+
+    public void setEmployeesByEmployeeId(Employee employeesByEmployeeId) {
+        this.employeesByEmployeeId = employeesByEmployeeId;
+    }
+
+    public Employee getEmployeesByManagerId() {
+        return employeesByManagerId;
+    }
+
+    public void setEmployeesByManagerId(Employee employeesByManagerId) {
+        this.employeesByManagerId = employeesByManagerId;
+    }
+
+    public LeaveType getLeaveTypes() {
+        return leaveTypes;
+    }
+
+    public void setLeaveTypes(LeaveType leaveTypes) {
+        this.leaveTypes = leaveTypes;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        LeaveRequest that = (LeaveRequest) o;
+        return Objects.equals(leaveId, that.leaveId) && Objects.equals(employeeId, that.employeeId) && Objects.equals(leaveTypeId, that.leaveTypeId) && Objects.equals(fromDate, that.fromDate) && Objects.equals(toDate, that.toDate) && Objects.equals(reason, that.reason) && Objects.equals(status, that.status) && Objects.equals(managerId, that.managerId) && Objects.equals(comments, that.comments) && Objects.equals(dateOfApplication, that.dateOfApplication) && Objects.equals(employeesByEmployeeId, that.employeesByEmployeeId) && Objects.equals(employeesByManagerId, that.employeesByManagerId) && Objects.equals(leaveTypes, that.leaveTypes);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(leaveId, employeeId, leaveTypeId, fromDate, toDate, reason, status, managerId, comments, dateOfApplication, employeesByEmployeeId, employeesByManagerId, leaveTypes);
+    }
+
+    @Override
+    public String toString() {
+        return "LeaveRequest{" +
+                "leaveId=" + leaveId +
+                ", employeeId=" + employeeId +
+                ", leaveTypeId=" + leaveTypeId +
+                ", fromDate=" + fromDate +
+                ", toDate=" + toDate +
+                ", reason='" + reason + '\'' +
+                ", status='" + status + '\'' +
+                ", managerId=" + managerId +
+                ", comments='" + comments + '\'' +
+                ", currentDate=" + dateOfApplication +
+                ", employeesByEmployeeId=" + employeesByEmployeeId +
+                ", employeesByManagerId=" + employeesByManagerId +
+                ", leaveTypes=" + leaveTypes +
+                '}';
+    }
 }

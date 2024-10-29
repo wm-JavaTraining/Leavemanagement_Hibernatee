@@ -8,8 +8,9 @@ import com.wavemaker.leavemanagement.model.LeaveRequest;
 import java.sql.SQLException;
 import java.util.List;
 
+
 public interface EmployeeLeaveRepository {
-    public LeaveRequest applyLeave(EmployeeLeave leaveRequest) throws ServerUnavailableException;
+    public LeaveRequest applyLeave(LeaveRequest leaveRequest) throws ServerUnavailableException;
 
     public List<EmployeeLeave> getAppliedLeaves(int empId, LeaveRequestStatus status) throws ServerUnavailableException;
 
@@ -19,12 +20,6 @@ public interface EmployeeLeaveRepository {
 
     public List<EmployeeLeave> getLeavesOfEmployees(List<Integer> employeeIds, LeaveRequestStatus status) throws ServerUnavailableException;
 
-    public int getNumberOfLeavesAllocated(String leaveType);
-
     public int getTotalNumberOfLeavesTaken(int empId, int leaveTypeId) throws SQLException;
-
-    public int getLeaveTypeId(String leaveType) throws ServerUnavailableException;
-
-    public String getLeaveType(int leaveTypeId) throws ServerUnavailableException;
 
 }

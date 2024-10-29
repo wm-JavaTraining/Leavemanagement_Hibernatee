@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 
 @Repository("employeeLeaveSummaryRepositoryInMemory")
 public class EmployeeLeaveSummaryRepositoryInMemoryImpl implements EmployeeLeaveSummaryRepository {
-    private static ConcurrentHashMap<Integer, EmployeeLeaveSummary> employeeLeaveSummaryMap = new ConcurrentHashMap<>();
     private static final Logger logger = LoggerFactory.getLogger(EmployeeLeaveSummaryRepositoryInMemoryImpl.class);
+    private static ConcurrentHashMap<Integer, EmployeeLeaveSummary> employeeLeaveSummaryMap = new ConcurrentHashMap<>();
 
     @Override
     public List<EmployeeLeaveSummary> getEmployeeLeaveSummaryByEmpId(int employeeId) throws ServerUnavailableException {
@@ -34,7 +34,7 @@ public class EmployeeLeaveSummaryRepositoryInMemoryImpl implements EmployeeLeave
                         leave.getLeaveTypeId() == employeeLeaveSummary.getLeaveTypeId())
                 .map(EmployeeLeaveSummary::getSummaryId) // Map to summaryId
                 .collect(Collectors.toList());
-        for(int i:summaryIds){
+        for (int i : summaryIds) {
             updateEmployeeLeaveSummary(employeeLeaveSummary);
             return employeeLeaveSummary;// Collect into a list
         }
@@ -58,19 +58,19 @@ public class EmployeeLeaveSummaryRepositoryInMemoryImpl implements EmployeeLeave
 
     @Override
     public boolean updateEmployeeLeaveSummary(EmployeeLeaveSummary employeeLeaveSummary) throws ServerUnavailableException {
-        int pendingLeaves = employeeLeaveSummary.getTotalAllocatedLeaves()-employeeLeaveSummary.getTotalLeavesTaken();
+        int pendingLeaves = employeeLeaveSummary.getLeaveTypeByLeaveTypeId().getLimitForLeaves() - employeeLeaveSummary.getTotalLeavesTaken();
         employeeLeaveSummary.setPendingLeaves(pendingLeaves);
         List<Integer> summaryIds = employeeLeaveSummaryMap.values()
-        .stream()
-        .filter(leave -> leave.getEmployeeId() == employeeLeaveSummary.getEmployeeId() &&
-                         leave.getLeaveTypeId() == employeeLeaveSummary.getLeaveTypeId())
-        .map(EmployeeLeaveSummary::getSummaryId) // Map to summaryId
-        .collect(Collectors.toList());
-        for(int i:summaryIds){
+                .stream()
+                .filter(leave -> leave.getEmployeeId() == employeeLeaveSummary.getEmployeeId() &&
+                        leave.getLeaveTypeId() == employeeLeaveSummary.getLeaveTypeId())
+                .map(EmployeeLeaveSummary::getSummaryId) // Map to summaryId
+                .collect(Collectors.toList());
+        for (int i : summaryIds) {
             employeeLeaveSummary.setSummaryId(i);
             break;// Collect into a list
         }
-        employeeLeaveSummaryMap.put(employeeLeaveSummary.getSummaryId(),employeeLeaveSummary);
+        employeeLeaveSummaryMap.put(employeeLeaveSummary.getSummaryId(), employeeLeaveSummary);
         return true;
     }
 

@@ -17,14 +17,13 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/holidays")
-public class HolidaysServlet extends HttpServlet {
-    private static final Logger logger = LoggerFactory.getLogger(HolidaysServlet.class);
+public class HolidaysController extends HttpServlet {
+    private static final Logger logger = LoggerFactory.getLogger(HolidaysController.class);
     @Autowired
     private HolidayService holidayService;
 
     @GetMapping("/getHolidays")
     private List<Holiday> getHolidays(HttpServletRequest request, HttpServletResponse response) throws ServerUnavailableException {
-        String jsonResponse = null;
         List<Holiday> holidays = holidayService.getUpcomingHolidays();
         return holidays;
     }

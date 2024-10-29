@@ -2,24 +2,27 @@ package com.wavemaker.leavemanagement.service.impl;
 
 import com.wavemaker.leavemanagement.constants.LeaveRequestStatus;
 import com.wavemaker.leavemanagement.exception.ServerUnavailableException;
-import com.wavemaker.leavemanagement.factory.EmployeeLeaveRepositoryGlobalInstance;
 import com.wavemaker.leavemanagement.model.EmployeeLeave;
 import com.wavemaker.leavemanagement.model.LeaveRequest;
 import com.wavemaker.leavemanagement.repository.EmployeeLeaveRepository;
 import com.wavemaker.leavemanagement.service.EmployeeLeaveService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.stereotype.Service;
 
 import java.sql.SQLException;
 import java.util.List;
 
+@Service
 public class EmployeeLeaveServiceImpl implements EmployeeLeaveService {
-    @Autowired
-    private  EmployeeLeaveRepository employeeLeaveRepository;
 
-    // Constructor to inject UserCookieTaskRepository
+    @Autowired
+    @Qualifier("employeeLeaveRepositoryImpl")
+    private EmployeeLeaveRepository employeeLeaveRepository;
+
 
     @Override
-    public LeaveRequest applyLeave(EmployeeLeave leaveRequest) throws ServerUnavailableException {
+    public LeaveRequest applyLeave(LeaveRequest leaveRequest) throws ServerUnavailableException {
         return employeeLeaveRepository.applyLeave(leaveRequest);
     }
 
@@ -44,23 +47,10 @@ public class EmployeeLeaveServiceImpl implements EmployeeLeaveService {
         return employeeLeaveRepository.getLeavesOfEmployees(employeeIds, status);
     }
 
-    @Override
-    public int getNumberOfLeavesAllocated(String leaveType) {
-        return employeeLeaveRepository.getNumberOfLeavesAllocated(leaveType);
-    }
 
     @Override
     public int getTotalNumberOfLeavesTaken(int empId, int leaveTypeId) throws SQLException {
         return employeeLeaveRepository.getTotalNumberOfLeavesTaken(empId, leaveTypeId);
     }
 
-    @Override
-    public int getLeaveTypeId(String leaveType) throws ServerUnavailableException {
-        return employeeLeaveRepository.getLeaveTypeId(leaveType);
-    }
-
-    @Override
-    public String getLeaveType(int leaveTypeId) throws ServerUnavailableException {
-        return employeeLeaveRepository.getLeaveType(leaveTypeId);
-    }
 }

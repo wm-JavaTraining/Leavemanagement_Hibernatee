@@ -1,4 +1,4 @@
-const apiUrl = 'http://localhost:8080/LeaveManagementAppSpring/employee/leave'; // Base API URL for the application
+const apiUrl = 'http://localhost:8081/LeaveManagementAppSpring/employee/leave'; // Base API URL for the application
 console.log(apiUrl);
 let gh = document.getElementById("teamLeaveSummaryContainer");
 console.log(gh);

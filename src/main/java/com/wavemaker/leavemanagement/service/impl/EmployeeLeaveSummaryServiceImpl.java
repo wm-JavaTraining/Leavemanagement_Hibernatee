@@ -1,7 +1,6 @@
 package com.wavemaker.leavemanagement.service.impl;
 
 import com.wavemaker.leavemanagement.exception.ServerUnavailableException;
-import com.wavemaker.leavemanagement.factory.EmployeeLeaveSummaryRepositoryGlobalInstance;
 import com.wavemaker.leavemanagement.model.EmployeeLeaveSummary;
 import com.wavemaker.leavemanagement.model.Holiday;
 import com.wavemaker.leavemanagement.repository.EmployeeLeaveSummaryRepository;
@@ -11,11 +10,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+
 @Service
 public class EmployeeLeaveSummaryServiceImpl implements EmployeeLeaveSummaryService {
     @Autowired
-    @Qualifier("employeeLeaveSummaryRepositoryInMemory")
-    private  EmployeeLeaveSummaryRepository employeeLeaveSummaryRepository;
+    @Qualifier("employeeLeaveSummaryRepositoryInDb")
+    private EmployeeLeaveSummaryRepository employeeLeaveSummaryRepository;
 
     @Override
     public List<EmployeeLeaveSummary> getEmployeeLeaveSummaryByEmpId(int employeeId) throws ServerUnavailableException {

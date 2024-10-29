@@ -1,19 +1,18 @@
 package com.wavemaker.leavemanagement.service.impl;
 
 import com.wavemaker.leavemanagement.exception.ServerUnavailableException;
-import com.wavemaker.leavemanagement.factory.HolidayGlobalInstance;
 import com.wavemaker.leavemanagement.model.Holiday;
 import com.wavemaker.leavemanagement.repository.HolidayRepository;
 import com.wavemaker.leavemanagement.service.HolidayService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class HolidayServiceImpl implements HolidayService {
-    private HolidayRepository holidayRepository = null;
-
-    public HolidayServiceImpl() {
-        this.holidayRepository = HolidayGlobalInstance.getHolidayRepositoryInstance();
-    }
+    @Autowired
+    private HolidayRepository holidayRepository;
 
     @Override
     public List<Holiday> getUpcomingHolidays() throws ServerUnavailableException {

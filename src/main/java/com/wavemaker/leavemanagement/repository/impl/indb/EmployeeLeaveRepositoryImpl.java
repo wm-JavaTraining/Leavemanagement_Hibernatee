@@ -6,387 +6,274 @@ import com.wavemaker.leavemanagement.model.EmployeeLeave;
 import com.wavemaker.leavemanagement.model.LeaveRequest;
 import com.wavemaker.leavemanagement.repository.EmployeeLeaveRepository;
 import com.wavemaker.leavemanagement.util.DateUtil;
-import com.wavemaker.leavemanagement.util.DbConnection;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.transaction.Transactional;
+import org.hibernate.Session;
+import org.hibernate.query.Query;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.orm.hibernate5.HibernateTemplate;
+import org.springframework.stereotype.Repository;
 
-import java.sql.*;
+import java.sql.Date;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 
 
+@Repository("employeeLeaveRepositoryImpl")
 public class EmployeeLeaveRepositoryImpl implements EmployeeLeaveRepository {
+    @Autowired
+    private HibernateTemplate hibernateTemplate;
 
     private static final Logger logger = LoggerFactory.getLogger(EmployeeLeaveRepositoryImpl.class);
-    private static final String GET_LEAVES_BY_EMPLOYEE_ID_QUERY =
-            "SELECT DISTINCT lr.LEAVE_ID, lr.EMPLOYEE_ID, lr.LEAVE_TYPE_ID, lr.FROM_DATE, lr.TO_DATE, " +
-                    "lr.REASON, lr.STATUS, lr.COMMENTS, lr.DATE_OF_APPLICATION, e.NAME AS EMPLOYEE_NAME, lt.TYPE_NAME, lt.LIMIT_FOR_LEAVES " +
-                    "FROM LEAVE_REQUEST lr " +
-                    "JOIN EMPLOYEE e ON lr.EMPLOYEE_ID = e.EMPLOYEE_ID " +
-                    "JOIN LEAVE_TYPE lt ON lr.LEAVE_TYPE_ID = lt.LEAVE_TYPE_ID " +
-                    "WHERE lr.EMPLOYEE_ID = ? " +
-                    "ORDER BY CASE WHEN lr.STATUS = 'PENDING' THEN 1 ELSE 2 END, lr.DATE_OF_APPLICATION";
-
-    private static final String GET_LEAVES_REQUESTS_BY_STATUS =
-            "SELECT  DISTINCT lr.LEAVE_ID, lr.EMPLOYEE_ID, lr.LEAVE_TYPE_ID, lr.FROM_DATE, lr.TO_DATE, " +
-                    "lr.REASON, lr.STATUS, lr.COMMENTS,lr.DATE_OF_APPLICATION , e.NAME AS EMPLOYEE_NAME, lt.TYPE_NAME,lt.LIMIT_FOR_LEAVES " +
-                    "FROM LEAVE_REQUEST lr " +
-                    "JOIN EMPLOYEE e ON lr.EMPLOYEE_ID = e.EMPLOYEE_ID " +
-                    "JOIN LEAVE_TYPE lt ON lr.LEAVE_TYPE_ID = lt. LEAVE_TYPE_ID " +
-                    "WHERE lr.EMPLOYEE_ID = ? AND lr.STATUS =?";
-    private static final String UPDATE_LEAVE_STATUS_TO_APPROVED_QUERY = "UPDATE LEAVE_REQUEST SET STATUS = 'APPROVED' " +
-            "WHERE LEAVE_ID = ?";
-    private static final String UPDATE_LEAVE_STATUS_TO_REJECTED_QUERY = "UPDATE LEAVE_REQUEST SET STATUS = 'REJECTED' " +
-            "WHERE LEAVE_ID = ?";
-    private static final String GET_LEAVE_REQUEST_QUERY = "SELECT * FROM LEAVE_REQUEST WHERE LEAVE_ID = ?";
+    private static final String UPDATE_LEAVE_STATUS_TO_APPROVED_QUERY = "UPDATE LeaveRequest lr SET lr.status = 'APPROVED' " +
+            "WHERE lr.leaveId =:leaveId";
+    private static final String UPDATE_LEAVE_STATUS_TO_REJECTED_QUERY = "UPDATE LeaveRequest lr SET lr.status = 'REJECTED' " +
+            "WHERE lr.leaveId =:leaveId";
+    private static final String GET_LEAVE_REQUEST_QUERY = "FROM LeaveRequest lr WHERE lr.leaveId =:leaveId";
     private static final String INSERT_LEAVE_REQUEST_QUERY = "INSERT INTO LEAVE_REQUEST (EMPLOYEE_ID, LEAVE_TYPE_ID," +
             " FROM_DATE, TO_DATE, REASON, STATUS, MANAGER_ID, COMMENTS,DATE_OF_APPLICATION) " +
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)";
-    private static final String GET_NUMBER_OF_LEAVES_ALLOCATED =
-            "SELECT LIMIT_FOR_LEAVES " +
-                    "FROM LEAVE_TYPE " +
-                    "WHERE TYPE_NAME = ?";
     private static final String COUNT_APPROVED_LEAVES_BY_TYPE_QUERY =
-            "SELECT FROM_DATE, TO_DATE " +
-                    "FROM LEAVE_REQUEST " +
-                    "WHERE EMPLOYEE_ID = ? " +
-                    "AND STATUS = 'APPROVED' " +
-                    "AND LEAVE_TYPE_ID = ? " +
-                    "AND FROM_DATE >= '2024-04-01' " +
-                    "AND TO_DATE <= '2025-03-31'";
-    private static final String SELECT_LEAVE_TYPE_ID_QUERY =
-            "SELECT LEAVE_TYPE_ID FROM LEAVE_TYPE WHERE TYPE_NAME = ?";
-    private static final String SELECT_LEAVE_TYPE_QUERY =
-            "SELECT TYPE_NAME FROM LEAVE_TYPE WHERE LEAVE_TYPE_ID  = ?";
+            "SELECT new com.wavemaker.leavemanagement.model.LeaveRequest( " +
+                    "lr.fromDate, lr.toDate) " +
+                    "FROM LeaveRequest lr " +
+                    "WHERE lr.employeesByEmployeeId.employeeId = :employeeId " +
+                    "AND lr.status = 'APPROVED' " +
+                    "AND lr.leaveTypes.leaveTypeId = :leaveTypeId ";
     private static final String SELECT_LEAVE_TYPE_ID_BY_LEAVEID_QUERY =
             "SELECT LEAVE_TYPE_ID FROM LEAVE_REQUEST WHERE LEAVE_ID = ?";
 
 
     @Override
-    public LeaveRequest applyLeave(EmployeeLeave leaveRequest) throws ServerUnavailableException {
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(INSERT_LEAVE_REQUEST_QUERY)) {
+    @Transactional
+    public LeaveRequest applyLeave(LeaveRequest leaveRequest) throws ServerUnavailableException {
+        hibernateTemplate.save(leaveRequest);
+        return leaveRequest;
 
-            preparedStatement.setInt(1, leaveRequest.getEmployeeId());
-            preparedStatement.setInt(2, leaveRequest.getLeaveTypeId());
-            preparedStatement.setDate(3, Date.valueOf(leaveRequest.getFromDate()));
-            preparedStatement.setDate(4, Date.valueOf(leaveRequest.getToDate()));
-            preparedStatement.setString(5, leaveRequest.getReason());
-            preparedStatement.setString(6, leaveRequest.getStatus());
-            preparedStatement.setInt(7, leaveRequest.getManagerId());
-            preparedStatement.setString(8, leaveRequest.getComments());
-            preparedStatement.setDate(9, Date.valueOf(leaveRequest.getCurrentDate()));
-
-            int rowsAffected = preparedStatement.executeUpdate();
-
-            if (rowsAffected > 0) {
-                logger.info("Leave request submitted successfully.");
-                return leaveRequest; // Return the leave request if insertion is successful
-            }
-        } catch (SQLException e) {
-            logger.error("Error applying leave request", e);
-            throw new ServerUnavailableException("Error applying leave request", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        }
-
-        return null;
     }
 
     @Override
+    @Transactional
     public List<EmployeeLeave> getAppliedLeaves(int employeeId, LeaveRequestStatus status) throws ServerUnavailableException {
-        List<EmployeeLeave> leaveRequests = new ArrayList<>();
-        String query;
-        if (status == LeaveRequestStatus.ALL) {
-            query = GET_LEAVES_BY_EMPLOYEE_ID_QUERY;
-        } else {
-            query = GET_LEAVES_REQUESTS_BY_STATUS;
-        }
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(query)) {
-
-            preparedStatement.setInt(1, employeeId);
-            if (status != LeaveRequestStatus.ALL) {
-                preparedStatement.setString(2, status.name());
-            }
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    EmployeeLeave employeeLeave = new EmployeeLeave();
-                    employeeLeave.setLeaveId(resultSet.getInt("LEAVE_ID"));
-                    employeeLeave.setEmployeeId(resultSet.getInt("EMPLOYEE_ID"));
-                    employeeLeave.setLeaveType(resultSet.getString("TYPE_NAME"));
-                    employeeLeave.setFromDate(resultSet.getDate("FROM_DATE").toLocalDate());
-                    employeeLeave.setToDate(resultSet.getDate("TO_DATE").toLocalDate());
-                    employeeLeave.setReason(resultSet.getString("REASON"));
-                    employeeLeave.setStatus(resultSet.getString("STATUS"));
-                    employeeLeave.setComments(resultSet.getString("COMMENTS"));
-                    employeeLeave.setEmpName(resultSet.getString("EMPLOYEE_NAME"));
-                    employeeLeave.setTypeLimit(resultSet.getInt("LIMIT_FOR_LEAVES"));
-                    employeeLeave.setCurrentDate(resultSet.getDate("DATE_OF_APPLICATION").toLocalDate());
-                    employeeLeave.setLeaveTypeId(resultSet.getInt("LEAVE_TYPE_ID"));
-                    int totalLeavesTaken = getTotalNumberOfLeavesTaken(employeeId, employeeLeave.getLeaveTypeId());
-                    employeeLeave.setTotalEmployeeLeavesTaken(totalLeavesTaken);
-                    int pendingLeaves = employeeLeave.getTypeLimit() - totalLeavesTaken;
-                    employeeLeave.setPendingLeaves(pendingLeaves);
-                    leaveRequests.add(employeeLeave);
-
-                }
-            }
-        } catch (SQLException e) {
-            throw new ServerUnavailableException("server is unavailable to fetch applied leaves", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-
-
-        }
-        return leaveRequests;
-    }
-
-    public EmployeeLeave acceptLeaveRequest(int leaveId) throws ServerUnavailableException {
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement updateStatement = connection.prepareStatement(UPDATE_LEAVE_STATUS_TO_APPROVED_QUERY);
-             PreparedStatement selectStatement = connection.prepareStatement(GET_LEAVE_REQUEST_QUERY)) {
-            updateStatement.setInt(1, leaveId);
-            int rowsAffected = updateStatement.executeUpdate();
-            if (rowsAffected > 0) {
-                selectStatement.setInt(1, leaveId);
-                try (ResultSet resultSet = selectStatement.executeQuery()) {
-                    if (resultSet.next()) {
-                        return mapResultSetToLeaveRequest(resultSet);
-                    }
-                }
-            }
-
-        } catch (SQLException e) {
-            throw new ServerUnavailableException("unavailable to accept leave request", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        }
-
-        return null;
-    }
-
-    @Override
-    public List<EmployeeLeave> getLeavesOfEmployees(List<Integer> employeeIds, LeaveRequestStatus status) throws ServerUnavailableException {
+        List<LeaveRequest> leaveRequests = new ArrayList<>();
         List<EmployeeLeave> employeeLeaves = new ArrayList<>();
-        if (employeeIds == null || employeeIds.isEmpty()) {
-            return employeeLeaves; // Return an empty list if no employee IDs are provided
+        Session session = hibernateTemplate.getSessionFactory().getCurrentSession();
+        String hql;
+        if (status == LeaveRequestStatus.ALL) {
+            hql = "SELECT DISTINCT lr " +
+                    "FROM LeaveRequest lr " +
+                    "JOIN lr.employeesByEmployeeId e " +
+                    "JOIN lr.leaveTypes lt " +
+                    "WHERE e.id = :employeeId " +
+                    "ORDER BY CASE WHEN lr.status = 'PENDING' THEN 1 ELSE 2 END, lr.dateOfApplication";
+        } else {
+            hql = "SELECT DISTINCT lr " +
+                    "FROM LeaveRequest lr " +
+                    "JOIN lr.employeesByEmployeeId e " +
+                    "JOIN lr.leaveTypes lt " +
+                    "WHERE e.id = :employeeId " +
+                    "AND lr.status = :status " +
+                    "ORDER BY CASE WHEN lr.status = 'PENDING' THEN 1 ELSE 2 END, lr.dateOfApplication";
         }
-
-        StringBuilder queryBuilder = new StringBuilder();
-        queryBuilder.append("SELECT e.EMPLOYEE_ID, e.NAME AS EMPLOYEE_NAME, lr.LEAVE_ID, ")
-                .append("lr.FROM_DATE, lr.TO_DATE, lr.REASON, lr.STATUS, lr.DATE_OF_APPLICATION, ")
-                .append("lr.LEAVE_TYPE_ID, lt.TYPE_NAME AS LEAVE_TYPE_NAME, lt.LIMIT_FOR_LEAVES, lr.COMMENTS ")
-                .append("FROM EMPLOYEES e ")
-                .append("JOIN LEAVE_REQUEST lr ON e.EMPLOYEE_ID = lr.EMPLOYEE_ID ")
-                .append("JOIN LEAVE_TYPES lt ON lr.LEAVE_TYPE_ID = lt.LEAVE_TYPE_ID ")
-                .append("WHERE e.EMPLOYEE_ID IN (");
-
-        for (int i = 0; i < employeeIds.size(); i++) {
-            queryBuilder.append("?");
-            if (i < employeeIds.size() - 1) {
-                queryBuilder.append(", ");
-            }
-        }
-        queryBuilder.append(") ");
-
-        if (status != LeaveRequestStatus.ALL) {
-            queryBuilder.append("AND lr.STATUS = ? ");
-        }
-
-        queryBuilder.append("ORDER BY CASE WHEN lr.STATUS = 'PENDING' THEN 1 ELSE 2 END, lr.DATE_OF_APPLICATION");
-
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(queryBuilder.toString())) {
-
-            // Set the employee IDs
-            for (int i = 0; i < employeeIds.size(); i++) {
-                preparedStatement.setInt(i + 1, employeeIds.get(i));
-            }
-
-            // Set the status if it's not 'ALL'
+        try {
+            Query<LeaveRequest> query = session.createQuery(hql, LeaveRequest.class);
+            query.setParameter("employeeId", employeeId);
             if (status != LeaveRequestStatus.ALL) {
-                preparedStatement.setString(employeeIds.size() + 1, status.name());
+                query.setParameter("status", status.name());
             }
+            leaveRequests = query.list();
+            if (leaveRequests != null) {
 
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
+                for (LeaveRequest leaveRequest : leaveRequests) {
                     EmployeeLeave employeeLeave = new EmployeeLeave();
-                    employeeLeave.setEmployeeId(resultSet.getInt("EMPLOYEE_ID"));
-                    employeeLeave.setEmpName(resultSet.getString("EMPLOYEE_NAME"));
-                    employeeLeave.setLeaveId(resultSet.getInt("LEAVE_ID"));
-                    employeeLeave.setFromDate(resultSet.getDate("FROM_DATE").toLocalDate());
-                    employeeLeave.setToDate(resultSet.getDate("TO_DATE").toLocalDate());
-                    employeeLeave.setReason(resultSet.getString("REASON"));
-                    employeeLeave.setStatus(resultSet.getString("STATUS"));
-                    employeeLeave.setComments(resultSet.getString("COMMENTS"));
-                    employeeLeave.setCurrentDate(resultSet.getDate("DATE_OF_APPLICATION").toLocalDate());
-                    employeeLeave.setLeaveTypeId(resultSet.getInt("LEAVE_TYPE_ID"));
-                    employeeLeave.setLeaveType(resultSet.getString("LEAVE_TYPE_NAME"));
-                    employeeLeave.setTypeLimit(resultSet.getInt("LIMIT_FOR_LEAVES"));
-                    int totalLeavesTaken = getTotalNumberOfLeavesTaken(employeeLeave.getEmployeeId(), employeeLeave.getLeaveTypeId());
+                    employeeLeave.setLeaveId(leaveRequest.getLeaveId());
+                    employeeLeave.setEmployeeId(leaveRequest.getEmployeeId());
+                    employeeLeave.setManagerId(leaveRequest.getManagerId());
+                    employeeLeave.setEmployeesByEmployeeId(leaveRequest.getEmployeesByEmployeeId());
+                    employeeLeave.setEmployeesByManagerId(leaveRequest.getEmployeesByManagerId());
+                    employeeLeave.setLeaveType(leaveRequest.getLeaveTypes().getTypeName());
+                    employeeLeave.setLeaveTypes(leaveRequest.getLeaveTypes());
+                    employeeLeave.setFromDate(leaveRequest.getFromDate());
+                    employeeLeave.setToDate(leaveRequest.getToDate());
+                    employeeLeave.setReason(leaveRequest.getReason());
+                    employeeLeave.setStatus(leaveRequest.getStatus());
+                    employeeLeave.setComments(leaveRequest.getComments());
+                    employeeLeave.setEmpName(leaveRequest.getEmployeesByEmployeeId().getEmpName());
+                    employeeLeave.setTypeLimit(leaveRequest.getLeaveTypes().getLimitForLeaves());
+                    employeeLeave.setDateOfApplication(leaveRequest.getDateOfApplication());
+                    employeeLeave.setLeaveTypeId(leaveRequest.getLeaveTypes().getLeaveTypeId());
+                    int totalLeavesTaken = getTotalNumberOfLeavesTaken(employeeId, employeeLeave.getLeaveTypeId());
                     employeeLeave.setTotalEmployeeLeavesTaken(totalLeavesTaken);
                     int pendingLeaves = employeeLeave.getTypeLimit() - totalLeavesTaken;
                     employeeLeave.setPendingLeaves(pendingLeaves);
                     employeeLeaves.add(employeeLeave);
                 }
             }
-        } catch (SQLException e) {
-            logger.error("Error fetching leave details for employees", e);
-            throw new ServerUnavailableException("server is unavailable to fetch the leaves of team requests", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+
+
+        } catch (Exception e) {
+            logger.error("Error validating user", e);
         }
+
         return employeeLeaves;
+
     }
 
-
     @Override
-    public int getNumberOfLeavesAllocated(String leaveType) {
-        int leaveLimit = 0;
-        String leaveTypeName = leaveType.trim(); // Ensure trimming
-
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(GET_NUMBER_OF_LEAVES_ALLOCATED)) {
-
-            preparedStatement.setString(1, leaveTypeName);
-            logger.info("Executing query to get leave limit for type: {}", leaveTypeName);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    leaveLimit = resultSet.getInt("LIMIT_FOR_LEAVES");
-                    logger.info("Leave limit for type '{}' is: {} ", leaveTypeName, leaveLimit);
-                } else {
-                    logger.warn("No leave type found for: {}", leaveTypeName);
-                }
-            } catch (Exception e) {
-                logger.error("Error while exeucuting Limit Leaves Query", e);
-                throw e;
+    @Transactional
+    public EmployeeLeave acceptLeaveRequest(int leaveId) throws ServerUnavailableException {
+        Session session = hibernateTemplate.getSessionFactory().getCurrentSession();
+        try {
+            Query<LeaveRequest> query = session.createQuery(UPDATE_LEAVE_STATUS_TO_APPROVED_QUERY);
+            query.setParameter("leaveId", leaveId);
+            int rows = query.executeUpdate();
+            if (rows > 0) {
+                Query<LeaveRequest> query1 = session.createQuery(GET_LEAVE_REQUEST_QUERY, LeaveRequest.class);
+                query1.setParameter("leaveId", leaveId);
+                LeaveRequest leaveRequest = query1.getSingleResult();
+                return mapResultSetToLeaveRequest(leaveRequest);
             }
         } catch (Exception e) {
-            logger.error("SQL Error in getNumberOfLeavesAllocated", e);
+            logger.error("Error accepting leave request", e);
         }
-        logger.info("Final Leave limit for type '{}' is: {} ", leaveTypeName, leaveLimit);
-        return leaveLimit;
-    }
-
-    @Override
-    public int getTotalNumberOfLeavesTaken(int employeeId, int leaveTypeId) {
-        int totalLeaves = 0;
-
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(COUNT_APPROVED_LEAVES_BY_TYPE_QUERY)) {
-
-            preparedStatement.setInt(1, employeeId);
-            preparedStatement.setInt(2, leaveTypeId);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                while (resultSet.next()) {
-                    Date fromDate = resultSet.getDate("FROM_DATE");
-                    Date toDate = resultSet.getDate("TO_DATE");
-
-                    if (fromDate != null && toDate != null) {
-                        // Calculate the number of leave days excluding weekends
-                        int leaveDays = DateUtil.calculateTotalDaysExcludingWeekends(fromDate, toDate);
-                        totalLeaves += leaveDays;
-                    } else {
-                        // Handle cases where fromDate or toDate might be null
-                        logger.warn("Encountered null date values for employee ID {}", employeeId);
-                    }
-                }
-            } catch (SQLException e) {
-                logger.error("Error while processing result set", e);
-            }
-
-        } catch (SQLException e) {
-            logger.error("Error while establishing connection or executing query", e);
-        }
-
-        return totalLeaves;
-    }
-
-
-    @Override
-    public int getLeaveTypeId(String leaveType) throws ServerUnavailableException {
-        int leaveTypeId = -1; // Default value if not found
-
-
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(SELECT_LEAVE_TYPE_ID_QUERY)) {
-
-            preparedStatement.setString(1, leaveType);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    leaveTypeId = resultSet.getInt("LEAVE_TYPE_ID");
-                }
-            }
-        } catch (SQLException e) {
-            throw new ServerUnavailableException("Unable to retrieve leave type ID", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        }
-
-        return leaveTypeId;
-
-    }
-
-    @Override
-    public String getLeaveType(int leaveTypeId) throws ServerUnavailableException {
-        String leaveType = ""; // Default value if not found
-
-
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement preparedStatement = connection.prepareStatement(SELECT_LEAVE_TYPE_QUERY)) {
-
-            preparedStatement.setInt(1, leaveTypeId);
-
-            try (ResultSet resultSet = preparedStatement.executeQuery()) {
-                if (resultSet.next()) {
-                    leaveType = resultSet.getString("TYPE_NAME");
-                }
-            }
-        } catch (SQLException e) {
-            throw new ServerUnavailableException("Unable to retrieve leave type ID", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-        }
-
-        return leaveType;
-
-    }
-
-
-    @Override
-    public LeaveRequest rejectLeaveRequest(int leaveId) throws ServerUnavailableException {
-
-        try (Connection connection = DbConnection.getConnection();
-             PreparedStatement updateStatement = connection.prepareStatement(UPDATE_LEAVE_STATUS_TO_REJECTED_QUERY);
-             PreparedStatement selectStatement = connection.prepareStatement(GET_LEAVE_REQUEST_QUERY)) {
-            // Update the leave request status
-            updateStatement.setInt(1, leaveId);
-            int rowsAffected = updateStatement.executeUpdate();
-            // Check if the update was successful
-            if (rowsAffected > 0) {
-                // Retrieve the updated leave request
-                selectStatement.setInt(1, leaveId);
-                try (ResultSet resultSet = selectStatement.executeQuery()) {
-                    if (resultSet.next()) {
-                        return mapResultSetToLeaveRequest(resultSet);
-                    }
-                }
-            }
-
-        } catch (SQLException e) {
-            throw new ServerUnavailableException("server is Unavailable to reject leave request", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            // Handle SQL exceptions (e.g., logging)
-        }
-
         return null;
 
     }
 
-    private EmployeeLeave mapResultSetToLeaveRequest(ResultSet resultSet) throws SQLException {
+    @Override
+    @Transactional
+    public List<EmployeeLeave> getLeavesOfEmployees(List<Integer> employeeIds, LeaveRequestStatus status) throws ServerUnavailableException {
+        List<EmployeeLeave> employeeLeaves = new ArrayList<>();
+        if (employeeIds == null || employeeIds.isEmpty()) {
+            return employeeLeaves;
+        }
+
+        Session session = hibernateTemplate.getSessionFactory().getCurrentSession();
+        StringBuilder hql = new StringBuilder();
+
+        hql.append("SELECT DISTINCT lr ")
+                .append("FROM LeaveRequest lr ")
+                .append("JOIN lr.employeesByEmployeeId  e ")
+                .append("JOIN lr.leaveTypes lt ")
+                .append("WHERE e.employeeId IN :employeeIds ");
+
+        if (status != LeaveRequestStatus.ALL) {
+            hql.append("AND lr.status = :status ");
+        }
+
+        hql.append("ORDER BY CASE WHEN lr.status = 'PENDING' THEN 1 ELSE 2 END, lr.dateOfApplication");
+
+        try {
+            Query<LeaveRequest> query = session.createQuery(hql.toString(), LeaveRequest.class);
+            query.setParameter("employeeIds", employeeIds);
+
+            if (status != LeaveRequestStatus.ALL) {
+                query.setParameter("status", status.name());
+            }
+
+            List<LeaveRequest> leaveRequests = query.list();
+
+            for (LeaveRequest leaveRequest : leaveRequests) {
+                EmployeeLeave employeeLeave = new EmployeeLeave();
+                employeeLeave.setLeaveId(leaveRequest.getLeaveId());
+                employeeLeave.setEmployeeId(leaveRequest.getEmployeeId());
+                employeeLeave.setManagerId(leaveRequest.getManagerId());
+                employeeLeave.setFromDate(leaveRequest.getFromDate());
+                employeeLeave.setToDate(leaveRequest.getToDate());
+                employeeLeave.setReason(leaveRequest.getReason());
+                employeeLeave.setStatus(leaveRequest.getStatus());
+                employeeLeave.setComments(leaveRequest.getComments());
+                employeeLeave.setDateOfApplication(leaveRequest.getDateOfApplication());
+                employeeLeave.setLeaveTypeId(leaveRequest.getLeaveTypeId());
+                employeeLeave.setEmpName(leaveRequest.getEmployeesByEmployeeId().getEmpName());
+                employeeLeave.setLeaveType(leaveRequest.getLeaveTypes().getTypeName());
+                employeeLeave.setTypeLimit(leaveRequest.getLeaveTypes().getLimitForLeaves());
+                employeeLeave.setEmployeesByEmployeeId(leaveRequest.getEmployeesByEmployeeId());
+                employeeLeave.setLeaveTypes(leaveRequest.getLeaveTypes());
+                int totalLeavesTaken = getTotalNumberOfLeavesTaken(employeeLeave.getEmployeeId(), employeeLeave.getLeaveTypeId());
+                employeeLeave.setTotalEmployeeLeavesTaken(totalLeavesTaken);
+                int pendingLeaves = employeeLeave.getTypeLimit() - totalLeavesTaken;
+                employeeLeave.setPendingLeaves(pendingLeaves);
+                employeeLeaves.add(employeeLeave);
+            }
+
+        } catch (Exception e) {
+            logger.error("Error fetching leave details for employees", e);
+            throw new ServerUnavailableException("Server is unavailable to fetch the leaves of team requests", HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+        }
+        return employeeLeaves;
+    }
+
+    @Override
+    @Transactional
+    public int getTotalNumberOfLeavesTaken(int employeeId, int leaveTypeId) {
+        Session session = hibernateTemplate.getSessionFactory().getCurrentSession();
+        int totalLeaves = 0;
+        int totalLeavesTaken = 0;
+        try {
+            Query<LeaveRequest> query = session.createQuery(COUNT_APPROVED_LEAVES_BY_TYPE_QUERY, LeaveRequest.class);
+            query.setParameter("employeeId", employeeId);
+            query.setParameter("leaveTypeId", leaveTypeId);
+            List<LeaveRequest> leaveRequests = query.list();
+
+            for (LeaveRequest leaveRequest : leaveRequests) {
+                Date fromDate = Date.valueOf((leaveRequest.getFromDate()));
+                Date toDate = Date.valueOf((leaveRequest.getToDate()));
+                if (fromDate != null && toDate != null) {
+                    int leaveDays = DateUtil.calculateTotalDaysExcludingWeekends(fromDate, toDate);
+                    totalLeaves += leaveDays;
+                } else {
+                    logger.warn("Encountered null date values for employee ID {}", employeeId);
+                }
+            }
+
+
+        } catch (Exception e) {
+            logger.error("Error fetching leave details for employees", e);
+        }
+        return totalLeaves;
+    }
+
+    @Override
+    @Transactional
+    public LeaveRequest rejectLeaveRequest(int leaveId) throws ServerUnavailableException {
+        Session session = hibernateTemplate.getSessionFactory().getCurrentSession();
+        try {
+            Query<LeaveRequest> query = session.createQuery(UPDATE_LEAVE_STATUS_TO_REJECTED_QUERY);
+            query.setParameter("leaveId", leaveId);
+            int rows = query.executeUpdate();
+            if (rows > 0) {
+                Query<LeaveRequest> query1 = session.createQuery(GET_LEAVE_REQUEST_QUERY, LeaveRequest.class);
+                query1.setParameter("leaveId", leaveId);
+                LeaveRequest leaveRequest = query1.getSingleResult();
+                return mapResultSetToLeaveRequest(leaveRequest);
+            }
+        } catch (Exception e) {
+            logger.error("Error accepting leave request", e);
+        }
+        return null;
+
+
+    }
+
+    private EmployeeLeave mapResultSetToLeaveRequest(LeaveRequest leaveRequest) throws SQLException {
         EmployeeLeave employeeLeave = new EmployeeLeave();
-        employeeLeave.setLeaveId(resultSet.getInt("LEAVE_ID"));
-        employeeLeave.setEmployeeId(resultSet.getInt("EMPLOYEE_ID"));
-        employeeLeave.setLeaveTypeId(resultSet.getInt("LEAVE_TYPE_ID"));
-        employeeLeave.setFromDate(resultSet.getDate("FROM_DATE").toLocalDate());
-        employeeLeave.setToDate(resultSet.getDate("TO_DATE").toLocalDate());
-        employeeLeave.setReason(resultSet.getString("REASON"));
-        employeeLeave.setStatus(resultSet.getString("STATUS"));
-        employeeLeave.setManagerId(resultSet.getInt("MANAGER_ID"));
-        employeeLeave.setComments(resultSet.getString("COMMENTS"));
-        employeeLeave.setCurrentDate(resultSet.getDate("DATE_OF_APPLICATION").toLocalDate());
+        employeeLeave.setLeaveId(leaveRequest.getLeaveId());
+        employeeLeave.setEmployeeId(leaveRequest.getEmployeeId());
+        employeeLeave.setLeaveTypeId(leaveRequest.getLeaveTypeId());
+        employeeLeave.setFromDate(leaveRequest.getFromDate());
+        employeeLeave.setToDate(leaveRequest.getToDate());
+        employeeLeave.setReason(leaveRequest.getReason());
+        employeeLeave.setStatus(leaveRequest.getStatus());
+        employeeLeave.setManagerId(leaveRequest.getManagerId());
+        employeeLeave.setComments(leaveRequest.getComments());
+        employeeLeave.setLeaveTypes(leaveRequest.getLeaveTypes());
+        employeeLeave.setEmployeesByEmployeeId(leaveRequest.getEmployeesByEmployeeId());
+        employeeLeave.setEmployeesByManagerId(leaveRequest.getEmployeesByManagerId());
+        employeeLeave.setDateOfApplication(leaveRequest.getDateOfApplication());
         return employeeLeave;
 
     }

@@ -1,12 +1,24 @@
 package com.wavemaker.leavemanagement.model;
 
+import jakarta.persistence.*;
+
 import java.time.LocalDate;
 
+@Entity
+@Table(name = "HOLIDAY")
 public class Holiday {
+
+    @Id
+    @Column(name = "HOLIDAY_ID")
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     int holidayId;
+    @Column(name = "HOLIDAY_NAME")
     String holidayName;
+    @Column(name = "HOLIDAY_START_DATE")
     LocalDate holidayStartDate;
+    @Column(name = "HOLIDAY_END_DATE")
     LocalDate holidayEndDate;
+    @Column(name = "REASON")
     String reason;
 
     public String getReason() {
