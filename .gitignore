@@ -38,12 +38,12 @@ build/
 # macOS specific files
 .DS_Store
 
-# Log files and logs directory
-logs/
-*.log
-
 # SmartTomcat plugin files
 .smarttomcat/
 
-C
+
+/logs
+
+/C
+
 
