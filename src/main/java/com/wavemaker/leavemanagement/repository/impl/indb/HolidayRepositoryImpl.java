@@ -8,6 +8,7 @@ import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.orm.hibernate5.HibernateTemplate;
 import org.springframework.stereotype.Repository;
@@ -25,6 +26,7 @@ public class HolidayRepositoryImpl implements HolidayRepository {
     private static Logger logger = LoggerFactory.getLogger(HolidayRepositoryImpl.class);
 
     @Override
+    @Transactional
     public List<Holiday> getUpcomingHolidays() throws ServerUnavailableException {
         List<Holiday> holidays = new ArrayList<>();
         Session session = hibernateTemplate.getSessionFactory().openSession();

@@ -13,9 +13,6 @@ import java.util.Collections;
 
 @Service
 public class AuthenticatedUserDetailsService implements UserDetailsService {
-
-    //    @Autowired
-//    private EmployeePasswordService employeePasswordService;
     @Autowired
     private LoginCredentialService loginCredentialService;
 

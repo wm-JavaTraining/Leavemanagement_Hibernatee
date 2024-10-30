@@ -53,3 +53,11 @@
 0:0:0:0:0:0:0:1 - - [29/Oct/2024:11:30:09 +0530] "GET /LeaveManagementAppSpringmvc/home HTTP/1.1" 404 763
 0:0:0:0:0:0:0:1 - - [29/Oct/2024:11:30:15 +0530] "GET /LeaveManagementAppSpringmvc/employee/leave/appliedLeaves?status=APPROVED HTTP/1.1" 200 12557
 0:0:0:0:0:0:0:1 - - [29/Oct/2024:11:30:19 +0530] "GET /LeaveManagementAppSpringmvc/employee/leave/summary/getEmployeeLeaveSummary HTTP/1.1" 200 356
+0:0:0:0:0:0:0:1 - - [29/Oct/2024:12:38:52 +0530] "POST /LeaveManagementAppSpringmvc/login HTTP/1.1" 302 -
+0:0:0:0:0:0:0:1 - - [29/Oct/2024:12:38:52 +0530] "GET /LeaveManagementAppSpringmvc/home HTTP/1.1" 404 763
+0:0:0:0:0:0:0:1 - - [29/Oct/2024:12:38:55 +0530] "GET /LeaveManagementAppSpringmvc/employee/leave/summary/getPersonalHolidays HTTP/1.1" 200 1192
+0:0:0:0:0:0:0:1 - - [29/Oct/2024:12:39:25 +0530] "GET /LeaveManagementAppSpringmvc/employee/leave/summary/getPersonalHolidays HTTP/1.1" 302 -
+0:0:0:0:0:0:0:1 - - [29/Oct/2024:12:39:25 +0530] "GET /LeaveManagementAppSpringmvc/login HTTP/1.1" 200 1436
+0:0:0:0:0:0:0:1 - - [29/Oct/2024:12:39:30 +0530] "POST /LeaveManagementAppSpringmvc/login HTTP/1.1" 302 -
+0:0:0:0:0:0:0:1 - - [29/Oct/2024:12:39:30 +0530] "GET /LeaveManagementAppSpringmvc/home HTTP/1.1" 404 763
+0:0:0:0:0:0:0:1 - - [29/Oct/2024:12:39:33 +0530] "GET /LeaveManagementAppSpringmvc/employee/leave/summary/getPersonalHolidays HTTP/1.1" 200 1192

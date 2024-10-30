@@ -3,8 +3,6 @@ package com.wavemaker.leavemanagement.repository.impl.indb;
 import com.wavemaker.leavemanagement.exception.ServerUnavailableException;
 import com.wavemaker.leavemanagement.model.LeaveType;
 import com.wavemaker.leavemanagement.repository.LeaveTypeRepository;
-import com.wavemaker.leavemanagement.util.DbConnection;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -13,11 +11,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.orm.hibernate5.HibernateTemplate;
 import org.springframework.stereotype.Repository;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 
 @Repository
 public class LeaveTypeRepositoryImpl implements LeaveTypeRepository {

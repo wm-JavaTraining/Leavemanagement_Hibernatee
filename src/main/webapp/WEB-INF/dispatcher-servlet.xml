@@ -61,6 +61,7 @@ http://www.springframework.org/schema/mvc/spring-mvc.xsd
             <value>com.wavemaker.leavemanagement.model.LoginCredential </value>
             <value>com.wavemaker.leavemanagement.model.LeaveType</value>
             <value>com.wavemaker.leavemanagement.model.EmployeeCookie</value>
+            <value>com.wavemaker.leavemanagement.model.Holiday</value>
         </list>
     </property>
 

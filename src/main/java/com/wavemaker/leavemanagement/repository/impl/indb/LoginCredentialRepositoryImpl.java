@@ -2,7 +2,7 @@ package com.wavemaker.leavemanagement.repository.impl.indb;
 
 import com.wavemaker.leavemanagement.model.LoginCredential;
 import com.wavemaker.leavemanagement.repository.LoginCredentialRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.query.Query;

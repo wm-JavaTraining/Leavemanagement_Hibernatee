@@ -5,7 +5,7 @@ import com.wavemaker.leavemanagement.model.*;
 import com.wavemaker.leavemanagement.repository.EmployeeRepository;
 import com.wavemaker.leavemanagement.util.DbConnection;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.slf4j.Logger;
