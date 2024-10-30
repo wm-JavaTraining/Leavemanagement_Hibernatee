@@ -36,3 +36,13 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+# Ignore log files and logs directory
+logs/
+*.log
+
+# Ignore IntelliJ IDEA project files
+.idea/
+
+# Ignore SmartTomcat plugin files
+.smarttomcat/
