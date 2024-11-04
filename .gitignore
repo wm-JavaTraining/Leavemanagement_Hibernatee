@@ -1,57 +1,6 @@
-# Ignore build output directories
 target/
-!**/src/main/**/target/
-!**/src/test/**/target/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-# IntelliJ IDEA specific files
-#.idea/
-#*.iml
-#*.ipr
-#*.iws
-#.idea/modules.xml
-#.idea/jarRepositories.xml
-#.idea/compiler.xml
-#.idea/libraries/
-
-# Eclipse specific files
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-# NetBeans specific files
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-# VS Code specific files
-#.vscode/
-
-# macOS specific files
-#.DS_Store
-
-# SmartTomcat plugin files
 .smarttomcat/
-
-
 /logs
-
-!/.idea
-/.idea/*
-!/.idea/codeStyles
-!/.idea/copyright
-!/.idea/inspectionProfiles
-!/.idea/runConfigurations
-!/.idea/scopes
-!/.idea/misc.xml
-!/.idea/vcs.xml
+.idea/
 
 
